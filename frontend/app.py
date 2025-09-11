@@ -5,7 +5,7 @@ import requests
 st.set_page_config(page_title="AutoScrum Dashboard", page_icon="🚀")
 
 # API configuration
-API_BASE_URL = "http://localhost:8000"
+API_BASE_URL = "http://autoscrum-production.up.railway.app"
 
 # Header
 st.title("🚀 AutoScrum Dashboard")
