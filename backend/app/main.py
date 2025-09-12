@@ -4,8 +4,14 @@ from pydantic import BaseModel
 from typing import List, Optional
 import os
 from dotenv import load_dotenv
-from services.jira_service import JiraService
-from services.groq_analysis import groq_service as ai_service  # Changed to Groq service
+# Try these import variations - use whichever works
+try:
+    from services.jira_service import JiraService
+    from services.groq_analysis import groq_service as ai_service
+except ImportError:
+    # Fallback for different file structure
+    from .services.jira_service import JiraService
+    from .services.groq_analysis import groq_service as ai_service
 
 # Load environment variables
 load_dotenv()
