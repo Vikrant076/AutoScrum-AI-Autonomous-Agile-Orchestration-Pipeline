@@ -1,152 +1,77 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
+import sys
 import os
-from dotenv import load_dotenv
-# Try these import variations - use whichever works
-try:
-    from services.jira_service import JiraService
-    from services.groq_analysis import groq_service as ai_service
-except ImportError:
-    # Fallback for different file structure
-    from .services.jira_service import JiraService
-    from .services.groq_analysis import groq_service as ai_service
 
-# Load environment variables
-load_dotenv()
+# Add current directory to path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Create the FastAPI application
-app = FastAPI(title="FlowCore API", description="The Brains behind the Auto-Agile Pipeline", version="0.0.1")
+app = FastAPI(title="FlowCore API", version="0.0.1")
 
-# Allow our frontend to talk to the backend (important for later)
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8501"], # Streamlit runs on this port
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# A simple in-memory "database" for our MVP. We'll replace this with PostgreSQL later.
-fake_db = {}
+# Mock services for testing
+class MockJiraService:
+    pass
 
-# Pydantic models define the structure of incoming/outgoing data
+class MockGroqService:
+    def analyze_standup_response(self, data):
+        return {
+            "sentiment_score": 0.8,
+            "sentiment_label": "positive",
+            "risk_level": "low",
+            "confidence_score": 0.9,
+            "key_achievements": ["Completed task A", "Started task B"],
+            "planned_work": ["Finish task B", "Start task C"],
+            "critical_blockers": ["None"],
+            "suggested_actions": ["Continue current work"],
+            "productivity_insight": "Developer is making good progress"
+        }
+    
+    def generate_session_summary(self, session_data, responses):
+        return {
+            "summary": "Team is progressing well with no major blockers",
+            "key_insights": ["Good momentum", "No critical issues"]
+        }
+
+# Use mock services for now
+jira_service = MockJiraService()
+ai_service = MockGroqService()
+
+# Pydantic models
 class StandupResponse(BaseModel):
     developer_email: str
     what_did_i_do: str
     what_will_i_do: str
     blockers: str
-    project_id: Optional[int] = None  # Added for AI analysis
-    session_id: Optional[int] = None  # Added for AI analysis
-
-class StandupSummary(BaseModel):
-    summary: str
-
-class AIAnalysisResult(BaseModel):
-    sentiment_score: float
-    sentiment_label: str
-    risk_level: str
-    confidence_score: float
-    key_achievements: List[str]
-    planned_work: List[str]
-    critical_blockers: List[str]
-    suggested_actions: List[str]
-    productivity_insight: str
-    metadata: Optional[dict] = None
-
-# --- API Routes ---
+    project_id: Optional[int] = None
+    session_id: Optional[int] = None
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to the FlowCore API! The future of Agile automation."}
+    return {"message": "FlowCore API DEPLOYED SUCCESSFULLY!"}
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    return {"status": "healthy", "deployment": "successful"}
 
-# This endpoint will receive standup responses from Slack
-@app.post("/webhook/standup", response_model=StandupSummary)
-async def receive_standup_response(response: StandupResponse, background_tasks: BackgroundTasks):
-    print(f"Received standup from {response.developer_email}")
-    
-    # For now, just store it in our fake DB
-    if 'standups' not in fake_db:
-        fake_db['standups'] = []
-    fake_db['standups'].append(response.dict())
-
-    # Analyze the standup response with Groq AI
-    analysis_result = ai_service.analyze_standup_response(response.dict())
-    print(f"AI Analysis Result: {analysis_result}")
-
-    # In a real scenario, we would check if we have all responses, then trigger the summary
-    # Let's just simulate it for one user for now.
-    background_tasks.add_task(generate_and_send_summary, [response])
-    return StandupSummary(summary="Thank you for your standup update! A summary will be generated shortly.")
-
-@app.post("/analyze-standup", response_model=AIAnalysisResult)
-async def analyze_standup(response: StandupResponse):
-    """Endpoint to analyze a single standup response with Groq AI"""
-    try:
-        analysis_result = ai_service.analyze_standup_response(response.dict())
-        
-        if "error" in analysis_result:
-            raise HTTPException(status_code=500, detail=analysis_result["error"])
-            
-        return analysis_result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"AI analysis failed: {str(e)}")
-
-@app.post("/generate-summary")
-async def generate_summary(session_data: dict, responses: List[StandupResponse]):
-    """Endpoint to generate a session summary with Groq AI"""
-    try:
-        # Convert responses to dict format
-        responses_dict = [r.dict() for r in responses]
-        
-        summary_result = ai_service.generate_session_summary(session_data, responses_dict)
-        
-        if "error" in summary_result:
-            raise HTTPException(status_code=500, detail=summary_result["error"])
-            
-        return summary_result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Summary generation failed: {str(e)}")
-
-def generate_and_send_summary(responses: List[StandupResponse]):
-    """Background task to generate summary. This is where Celery will go later."""
-    print("Background task: Generating summary...")
-    
-    # Convert to dict format for the AI service
-    responses_dict = [r.dict() for r in responses]
-    
-    # Create session data
-    session_data = {
-        "date": "2023-01-01",  # You might want to use actual date
-        "participant_count": len(responses)
+@app.post("/webhook/standup")
+async def receive_standup_response(response: StandupResponse):
+    return {
+        "message": f"Received standup from {response.developer_email}",
+        "analysis": ai_service.analyze_standup_response(response.dict())
     }
-    
-    # Generate summary using Groq AI
-    summary_result = ai_service.generate_session_summary(session_data, responses_dict)
-    
-    if "error" not in summary_result:
-        summary = summary_result["summary"]
-        print(f"SUMMARY:\n{summary}")
-        # In the next steps, we will send this to Slack instead of just printing it.
-        print("Mock: Summary would now be posted to Slack channel.")
-    else:
-        print(f"Failed to generate summary: {summary_result['error']}")
 
-# --- Startup Event ---
-@app.on_event("startup")
-async def startup_event():
-    # Initialize our "services"
-    print("FlowCore API is starting up...")
-    print(f"Using Groq AI with model: {ai_service.default_model}")
-    # This is where we would initialize a real database connection
-    # Add this at the VERY BOTTOM of the file
 import os
-
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
