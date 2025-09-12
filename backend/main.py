@@ -4,8 +4,8 @@ from pydantic import BaseModel
 from typing import List, Optional
 import os
 from dotenv import load_dotenv
-from .services.jira_service import JiraService
-from .services.groq_analysis import groq_service as ai_service  # Changed to Groq service
+from services.jira_service import JiraService
+from services.groq_analysis import groq_service as ai_service  # Changed to Groq service
 
 # Load environment variables
 load_dotenv()
@@ -138,3 +138,10 @@ async def startup_event():
     print("FlowCore API is starting up...")
     print(f"Using Groq AI with model: {ai_service.default_model}")
     # This is where we would initialize a real database connection
+# Add this at the VERY BOTTOM of the file
+import os
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)    
