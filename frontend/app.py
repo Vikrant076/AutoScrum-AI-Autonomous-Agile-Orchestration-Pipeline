@@ -1,20 +1,33 @@
 import streamlit as st
+import requests
 import os
 
-# Set page config - MUST be the first Streamlit command
+# Configuration
+BACKEND_URL = os.environ.get("BACKEND_URL", "https://autoscrum-production.up.railway.app")
+
+# Set page config
 st.set_page_config(
     page_title="AutoScrum Dashboard",
     page_icon="🚀",
     layout="wide"
 )
 
-# Your app code here
 def main():
     st.title("AutoScrum Dashboard")
     st.write("Welcome to AutoScrum - Your AI Agile Orchestration Tool")
-    # Add the rest of your app code here
+    
+    # Test connection to backend
+    try:
+        response = requests.get(f"{BACKEND_URL}/health")
+        if response.status_code == 200:
+            st.success("✅ Connected to backend API successfully!")
+            st.json(response.json())
+        else:
+            st.error("❌ Backend connection failed")
+    except Exception as e:
+        st.error(f"Connection error: {str(e)}")
+    
+    # Add your actual app functionality here
 
 if __name__ == "__main__":
-    # Get port from environment variable or default to 8501
-    port = int(os.environ.get("PORT", 8501))
     main()
