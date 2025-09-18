@@ -18,11 +18,11 @@ test_standup = {
 }
 
 if __name__ == "__main__":
-    if not os.getenv("OPENAI_API_KEY"):
-        print("❌ OPENAI_API_KEY not found in environment variables")
-        print("Please set OPENAI_API_KEY in your .env file")
+    if not os.getenv("DEEPSEEK_API_KEY"):
+        print("❌ DEEPSEEK_API_KEY not found in environment variables")
+        print("Please set DEEPSEEK_API_KEY in your .env file or Railway variables")
     else:
-        print("🧪 Testing AI Analysis Service...")
+        print("🧪 Testing AI Analysis Service with DeepSeek...")
         result = ai_service.analyze_standup_response(test_standup)
         print("✅ AI Analysis Result:")
         print(json.dumps(result, indent=2))
