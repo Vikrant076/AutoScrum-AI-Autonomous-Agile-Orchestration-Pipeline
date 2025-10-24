@@ -8,13 +8,12 @@ except ImportError:
     groq = None
     GROQ_AVAILABLE = False
 
-load_dotenv()  # Load environment variables
-
+load_dotenv()  
 def summarize_standup(standup_responses: list) -> str:
     """
     Takes a list of standup responses from developers and generates a summary using Groq AI.
     """
-    # Build the prompt for the AI
+    
     prompt = f"""
     Please act as a professional Scrum Master and summarize the following daily stand-up updates into a concise, well-structured paragraph.
     Focus on progress made, plans for the day, and especially any blockers or impediments that need attention.
@@ -33,7 +32,7 @@ def summarize_standup(standup_responses: list) -> str:
     Summary:
     """
     
-    # Use Groq AI if available and configured
+    
     if GROQ_AVAILABLE and os.getenv("GROQ_API_KEY"):
         try:
             client = groq.Groq(api_key=os.getenv("GROQ_API_KEY"))
@@ -52,7 +51,7 @@ def summarize_standup(standup_responses: list) -> str:
             
         except Exception as e:
             print(f"Error calling Groq API: {e}")
-            # Fall back to mock response if API call fails
+            
             return get_mock_summary()
     else:
         print("Groq not available or not configured. Using mock summary.")
